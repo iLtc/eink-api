@@ -25,3 +25,4 @@ Route::get('/status', function (Request $request) {
 use App\Http\Controllers\ApiController;
 
 Route::get('/weather', [ApiController::class, 'weather']);
+Route::get('/habitica', [ApiController::class, 'habitica']);
