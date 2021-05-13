@@ -14,7 +14,7 @@ class ApiController extends Controller
     public function callAction($method, $parameters) {
         $token = $parameters[0]->query('token', '');
 
-        if (!env('APP_DEBUG', false) && $token != env('', 'EINK_TOKEN')) {
+        if (!env('APP_DEBUG', false) && $token != env('EINK_TOKEN', '')) {
             return response()->json([
                 'status' => 'fail',
                 'reason' => 'Miss eInk Token'
