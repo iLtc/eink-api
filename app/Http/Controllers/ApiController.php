@@ -12,6 +12,15 @@ use Google_Service_Calendar;
 class ApiController extends Controller
 {
     public function callAction($method, $parameters) {
+        $token = $parameters[0]->query('token', '');
+
+        if (!env('APP_DEBUG', false) && $token != env('', 'EINK_TOKEN')) {
+            return response()->json([
+                'status' => 'fail',
+                'reason' => 'Miss eInk Token'
+            ], 403);
+        }
+
         return parent::callAction($method, $parameters);
     }
 
