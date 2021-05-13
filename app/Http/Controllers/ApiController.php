@@ -153,10 +153,10 @@ class ApiController extends Controller
 
             if ($client->isAccessTokenExpired()) {
                 return response()->json([
-                    'status' => 'failed',
-                    'data' => $account . ' needs to be authenticated!',
+                    'status' => 'fail',
+                    'reason' => $account . ' needs to be authenticated!',
                     'url' => route('google_auth', ['account' => $account])
-                ]);
+                ], 403);
             }
 
             $service = new Google_Service_Calendar($client);
@@ -190,6 +190,35 @@ class ApiController extends Controller
         return response()->json([
             'status' => 'success',
             'events' => $events
+        ]);
+    }
+
+    public function all_in_one(Request $request) {
+        $original_data = array(
+            'weather' => $this->weather($request),
+            'habitica' => $this->habitica($request),
+            'omnifocus' => $this->omnifocus($request),
+            'calendar' => $this->calendar($request)
+        );
+
+        $data = array();
+
+        foreach ($original_data as $name => $temp) {
+            $json = json_decode($temp->content(), true);
+
+            if ($temp->getStatusCode() != 200) {
+                return response()->json([
+                    'status' => 'fail',
+                    'reason' => 'Failed to get data from '. $name . ': ' . $json['reason']
+                ], $temp->getStatusCode());
+            }
+
+            $data[$name] = $json;
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data
         ]);
     }
 }
