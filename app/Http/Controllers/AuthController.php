@@ -27,7 +27,18 @@ class AuthController extends Controller
 
             $client->setAccessToken($tokens);
 
-            if (!$client->isAccessTokenExpired()) {
+            if ($client->isAccessTokenExpired()) {
+                $client->fetchAccessTokenWithRefreshToken();
+
+                if (!$client->isAccessTokenExpired()) {
+                    Storage::put('auth/'.$account, json_encode($client->getAccessToken()));
+
+                    return response()->json([
+                        'status' => 'success',
+                        'data' => 'Credentials for '. $account .' have been refreshed!'
+                    ]);
+                }
+            } else {
                 return response()->json([
                     'status' => 'success',
                     'data' => 'No need to update credentials for '. $account .'!'
