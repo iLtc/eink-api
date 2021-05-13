@@ -62,7 +62,7 @@ class ApiController extends Controller
         $data = array();
 
         foreach ($old_data as &$item) {
-            if ($item['type'] != 'daily') 
+            if ($item['type'] != 'daily')
                 continue;
 
             $data[$item['id']] = array(
@@ -82,6 +82,43 @@ class ApiController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $sorted_data
+        ]);
+    }
+
+    public function omnifocus(Request $request) {
+        $now = new \DateTime('now', new \DateTimeZone('America/New_York'));
+
+        $end_of_today = new \DateTime('now', new \DateTimeZone('America/New_York'));
+        $end_of_today->setTime(23, 59, 59);
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer '.env('TASKS_SERVER_TOKEN')
+        ])->get('https://tasks.iltc.app/api/tasks?start='. $now->format(\DateTime::ISO8601) .'&end='. $end_of_today->format(\DateTime::ISO8601));
+
+        if ($response->failed()) {
+            return response()->json([
+                'status' => 'fail',
+                'reason' => 'HTTP Request Returns '.$response->status()
+            ], $response->status());
+        }
+
+        $results = array();
+
+        foreach ($response->json() as &$task) {
+            if ($task['active'] == 0 || $task['completed'] == 1 || $task['taskStatus'] == 'Completed')
+                continue;
+
+            if ($task['dueDate'] == null)
+                $task['dueDate'] = '';
+
+            $task['dueDate'] = str_replace('.000000Z', '', $task['dueDate']);
+
+            array_push($results, $task);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $results
         ]);
     }
 }
