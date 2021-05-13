@@ -27,3 +27,4 @@ use App\Http\Controllers\ApiController;
 Route::get('/weather', [ApiController::class, 'weather']);
 Route::get('/habitica', [ApiController::class, 'habitica']);
 Route::get('/omnifocus', [ApiController::class, 'omnifocus']);
+Route::get('/calendar', [ApiController::class, 'calendar']);

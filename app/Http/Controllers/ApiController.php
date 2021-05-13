@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+
+use Google_Client;
+use Google_Service_Calendar;
 
 class ApiController extends Controller
 {
@@ -118,7 +122,74 @@ class ApiController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $results
+            'tasks' => $results
+        ]);
+    }
+
+    public function calendar(Request $request) {
+        $calendars_data = json_decode(Storage::get('calendars.json'), true);
+        $events = array();
+
+        $now = now();
+        $tomorrow = now()->addDay();
+
+        foreach ($calendars_data as $account => $calendars) {
+            $client = new Google_Client();
+            $client->setAuthConfig(storage_path('app/client_secret.json'));
+
+            if (Storage::exists('auth/'.$account)) {
+                $tokens = json_decode(Storage::get('auth/'.$account), true);
+
+                $client->setAccessToken($tokens);
+
+                if ($client->isAccessTokenExpired()) {
+                    $client->fetchAccessTokenWithRefreshToken();
+
+                    if (!$client->isAccessTokenExpired()) {
+                        Storage::put('auth/' . $account, json_encode($client->getAccessToken()));
+                    }
+                }
+            }
+
+            if ($client->isAccessTokenExpired()) {
+                return response()->json([
+                    'status' => 'failed',
+                    'data' => $account . ' needs to be authenticated!',
+                    'url' => route('google_auth', ['account' => $account])
+                ]);
+            }
+
+            $service = new Google_Service_Calendar($client);
+
+            foreach ($calendars as $name => $details) {
+                $results = $service->events->listEvents($details['id'], array(
+                    'orderBy' => 'startTime',
+                    'singleEvents' => true,
+                    'timeMin' => $now->toIso8601String(),
+                    'timeMax' => $tomorrow->toIso8601String()
+                ));
+
+                $data = $results->getItems();
+
+                foreach ($data as $event) {
+                    array_push($events, array(
+                        'calendar' => $name,
+                        'important' => $details['important'],
+                        'start' => $event['start'],
+                        'end' => $event['end'],
+                        'summary' => $event['summary']
+                    ));
+                }
+            }
+        }
+
+        usort($events, function ($e1, $e2) {
+            return $e1['start']['dateTime'] <=> $e2['start']['dateTime'];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'events' => $events
         ]);
     }
 }
